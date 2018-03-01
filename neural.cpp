@@ -18,26 +18,29 @@ neural::~neural()
 	_mm_free(_agentNeuronWeights);
 }
 
-void neural::init_weights(size_t inputWidth)
+void neural::init_weights(size_t nAgents, size_t nNeurons, size_t inputWidth)
 {
-	auto mmCount = mm_count(inputWidth);
-	_agentNeuronWeights = ?;
+	auto mmCount = mm_count(nAgents*nNeurons*inputWidth);
+	_agentNeuronWeights = aalloc(mmCount);
 }
 
 // here starts offset hell, in order to follow data layout and avoid shuffling at all costs
-void neural::step_forward(mmr* inputData, size_t inputWidth, size_t endAgent, size_t startAgent) {
-	for (size_t i = startAgent/4; i < endAgent/4; ++i) {
-		auto neuronOffset = i*_nNeurons;
-		for (size_t j = 0; j < _nNeurons; ++j) {
-			auto agentNeuronDotProduct = _agentNeuronBiases[neuronOffset + j];
-			auto inputOffset = i*inputWidth;
-			auto dotResult = _mm_set_ps1(0);
-			for (size_t k = 0; k < inputWidth; ++k)
-				agentNeuronDotProduct = _mm_add_ps(agentNeuronDotProduct, _mm_mul_ps(inputData[inputOffset + k], _agentNeuronWeights[?]));
-			//update_activations()
-			_agentNeuronActivations[neuronOffset + j] = _mm_tanh_ps(agentNeuronDotProduct);
-		}
-	}
+void neural::substep_calculate_decisions(size_t i, mmr* inputData, size_t inputWidth) {
+	auto neuronOffset = i*_nNeurons;
+	for (size_t j = neuronOffset+0; j < neuronOffset+_nNeurons; ++j)
+		substep_neuron_compress(i, j, substep_neuron_calc_dot(i, j, inputData, inputWidth));
+}
+
+mmr neural::substep_neuron_calc_dot(size_t i, size_t j, const mmr* inputData, size_t inputWidth) const {
+	auto agentNeuronDotProduct = _agentNeuronBiases[j];
+	auto inputOffset = i*inputWidth;
+	auto dotResult = _mm_set_ps1(0);
+	for (size_t k = 0; k < inputWidth; ++k)
+		agentNeuronDotProduct = _mm_add_ps(agentNeuronDotProduct, _mm_mul_ps(inputData[inputOffset + k], _agentNeuronWeights[inputOffset+k]));
+}
+
+void neural::substep_neuron_compress(size_t i, size_t j, mmr dotResult) {
+	_agentNeuronActivations[j] = _mm_tanh_ps(dotResult);
 }
 
 const float & neural::get_neuron_output(size_t i, size_t neuronIndex) const {

@@ -13,17 +13,14 @@ public:
 	void init_sensors(size_t nSensors);
 
 	// proximity sensor
-	void step_proximity_sensor(size_t endAgent, size_t startAgent = 0);
 	void substep_find_max_inverse_distance_to_wall(size_t i);
 	
 	// motion integrator
-	void step_motion_integrator(size_t endAgent, size_t startAgent = 0);
 	void substep_integrate_rotation(size_t i, mmr amountSteering);
 	void substep_integrate_movement(size_t i, mmr amountAcceleration);
 	void substep_estimate_circular_path_advancement(size_t i);
 	
 	// collision detector
-	void step_collision_detector(size_t endAgent, size_t startAgent = 0);
 	void substep_detect_collisions(size_t i, mmr agentRadiusSquared);
 	void substep_decrease_ttl(size_t i);
 
@@ -83,11 +80,5 @@ public:
 	//size_t _nAgents; // number of agents
 	size_t _nWalls; // number of walls (segments) on map
 	size_t _nSensors; // number of sensors, each agent has
-
-	float dT; // fixed time delta for physics simulation
-	float dT2; // squared time delta;
-	float agentRadius; // = 1.0f / 64
-	float steeringMagnitude; // = 64;
-	float accelerationMagnitude; // = 64;
 
 };

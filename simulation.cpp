@@ -10,67 +10,82 @@
 */
 #include "simulation.h"
 
+#include <numeric>	// std::iota
+#include <algorithm> // std::sort
+
 simulation::simulation(size_t nAgents):
 	_nAgents(nAgents),
 	_neuralEngine(nAgents),
 	_physicsEngine(nAgents),
 	_frameSheduler(),
-	_numThreads(0)
-{}
-
-//void user_input::step() {
-	// if one day i would like to interact with this world, i will do it here :)
-//}
-
-
-//void logic::step() {
-	//update_scores();
-	//calculate_top_scores_chart();
-//}
-
+	_numThreads(0),
+	_agentRatingRank(nAgents)
+{
+	iota(_agentRatingRank.begin(), _agentRatingRank.end(), 0);
+}
 
 
 void simulation::step() {
 	// process_user_input();
+	// does sorting every step, yes it could be bad for random, but rerunning sort on sorted array is fast
 
-	//maintain_top_scores();
-	size_t topIndex = 0;
-	float topScore = 0;
-	for (size_t i = 0; i < _nAgents; i++) {
-		auto curScore = _physicsEngine.get_agent_score(i);
-		if (curScore > topScore) {
-			topScore = curScore;
-			topIndex = i;
-		}
+	// replaces every dead agent with new best one, but a bit modified
+	substep_natural_selection(_nAgents);
+	
+	// runs neural network related stuff, to generate control decisions
+	substep_neural_network(_nAgents);
+
+	// physics actuator, must fire 
+	// - after neural, to avoid wrong moves on agent respawn
+	// - before natural_selection, as it will decide respawns
+	substep_motion_integrator(_nAgents);
+
+	// sheduler: analyze performance, artificial delay to slow down simulation
+	_frameSheduler.step();
+}
+
+
+void simulation::substep_natural_selection(size_t endAgent, size_t startAgent) {
+	std::sort(_agentRatingRank.begin(), _agentRatingRank.end(),
+		[this](size_t i0, size_t i1) {
+		return _physicsEngine.get_agent_score(i0) > _physicsEngine.get_agent_score(i1);
 	}
-
-	for (size_t i = 0; i < _nAgents; i++) {
-		//handle_natural_selection();
+	);
+	auto topIndex = _agentRatingRank[0];
+	for (size_t i = startAgent; i < endAgent; i++) {
 		if (_physicsEngine.get_agent_collision_flags(i)) { // for respawned : mutate/crossover
-			
+
 		}
 		else {
 			;
 		}
 	}
-	// crafts input for neural network, so goes before its pass
-	_physicsEngine.step_proximity_sensor(_nAgents);
+}
 
-	// calculate_control_decisions();
-	_neuralEngine.step_forward(_physicsEngine._agentSensorProximity, _physicsEngine._nSensors, _nAgents);
 
-	// as number of neurons could be greater than controls to agent physical body
-	// void map_neural_outputs(); 
-	for (size_t i = 0; i < _nAgents; i++) {
-		for( size_t j = 0; j < physics::ControlCOUNT; j++)
+void simulation::substep_neural_network(size_t endAgent, size_t startAgent) {
+	for (size_t i = startAgent / 4; i < endAgent / 4; ++i) {
+		// calculate input data for neural net
+		_physicsEngine.substep_find_max_inverse_distance_to_wall(i);
+
+		// fire it
+		_neuralEngine.substep_calculate_decisions(i, _physicsEngine._agentSensorProximity, _physicsEngine._nSensors);
+
+		// transmit control decisions to physics engine (shuffling)
+		for (size_t j = 0; j < physics::ControlCOUNT; j++)
 			_physicsEngine.set_agent_control(i, j, _neuralEngine.get_neuron_output(i, j));
+	}
+}
 
-	// physics actuator, must fire only after neural, to avoid wrong moves on agent respawn
-	_physicsEngine.step_motion_integrator(_nAgents);
 
-	// must be before control logic, as it will decide respawns
-	_physicsEngine.step_collision_detector(_nAgents);
-	
-	// sheduler: analyze performance, artificial delay to slow down simulation
-	_frameSheduler.step();
+void simulation::substep_motion_integrator(size_t endAgent, size_t startAgent) {
+	mmr amountSteering = _mm_set_ps1(dT2 * steeringMagnitude);
+	mmr amountAcceleration = _mm_set_ps1(dT2 * accelerationMagnitude);
+	mmr agentRadiusSquared = _mm_set_ps1(sqrt(agentRadius));
+	for (size_t i = startAgent / 4; i < endAgent / 4; ++i) {
+		_physicsEngine.substep_integrate_rotation(i, amountSteering);
+		_physicsEngine.substep_integrate_movement(i, amountAcceleration);
+		_physicsEngine.substep_estimate_circular_path_advancement(i);
+		_physicsEngine.substep_detect_collisions(i, agentRadiusSquared);
+	}
 }

@@ -73,12 +73,6 @@ void physics::init_sensors(size_t nSensors) {
 }
 
 
-void physics::step_proximity_sensor(size_t endAgent, size_t startAgent) {
-	for (size_t i = startAgent / 4; i < endAgent / 4; ++i) {
-		substep_find_max_inverse_distance_to_wall(i);
-	}
-}
-
 
 void physics::substep_find_max_inverse_distance_to_wall(size_t i) {
 	auto agentSensorArrayOffset = i*_nSensors;
@@ -101,17 +95,6 @@ void physics::substep_find_max_inverse_distance_to_wall(size_t i) {
 			auto newSensorProximity = pu_ray_segment_distance_inverse(wallToAgentX, wallToAgentY, _wallS0S1X[j], _wallS0S1Y[j], sensorDirX, sensorDirY);
 			_agentSensorProximity[agentSensorArrayOffset + k] = _mm_max_ps(_agentSensorProximity[agentSensorArrayOffset + k], newSensorProximity);
 		}
-	}
-}
-
-
-void physics::step_motion_integrator(size_t endAgent, size_t startAgent) {
-	mmr amountSteering = _mm_set_ps1(dT2 * steeringMagnitude);
-	mmr amountAcceleration = _mm_set_ps1(dT2 * accelerationMagnitude);
-	for (size_t i = startAgent / 4; i < endAgent / 4; ++i) {
-		substep_integrate_rotation(i, amountSteering);
-		substep_integrate_movement(i, amountAcceleration);
-		substep_estimate_circular_path_advancement(i);
 	}
 }
 
@@ -156,14 +139,6 @@ void physics::substep_estimate_circular_path_advancement(size_t i) {
 }
 
 
-void physics::step_collision_detector(size_t endAgent, size_t startAgent) {
-	mmr agentRadiusSquared = _mm_set_ps1(sqrt(agentRadius));
-	for (size_t i = startAgent / 4; i < endAgent / 4; ++i) {
-		substep_detect_collisions(i, agentRadiusSquared);
-	}
-}
-
-
 void physics::substep_detect_collisions(size_t i, mmr agentRadiusSquared) {
 	auto agentCollisionMask = _mm_setzero_ps();
 	auto agentWallArrayOffset = i*_nWalls;
@@ -181,6 +156,7 @@ void physics::substep_detect_collisions(size_t i, mmr agentRadiusSquared) {
 	}
 	_agentCollision[i] = _mm_or_ps(_agentCollision[i], agentCollisionMask);
 }
+
 
 void physics::substep_decrease_ttl(size_t i) {
 	_agentTTL[i] = _mm_sub_epi32(_agentTTL[i], _mm_set1_epi32(1));
