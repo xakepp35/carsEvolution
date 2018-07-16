@@ -119,6 +119,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="competition.cpp" />
     <ClCompile Include="neural.cpp" />
     <ClCompile Include="sheduler.cpp" />
     <ClCompile Include="main.cpp" />
@@ -127,6 +128,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="base.h" />
+    <ClInclude Include="competition.h" />
     <ClInclude Include="neural.h" />
     <ClInclude Include="physics.h" />
     <ClInclude Include="sheduler.h" />

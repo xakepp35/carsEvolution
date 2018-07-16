@@ -1,16 +1,20 @@
 #pragma once
 
 #include "base.h"
+#include "competition.h"
 
-class physics
+class physics: public competition::i_problem
 {
 public:
 
-	physics(size_t nAgents);
+	physics(size_t nAgents, size_t nWalls, size_t nSensors);
 	~physics();
 
-	void init_walls(size_t nWalls);
-	void init_sensors(size_t nSensors);
+	// i_problem interface
+	virtual void describe_situation(size_t numAgents) override;
+	virtual void update_situation(competition::score_chart& accumulatedScore, size_t numAgents) override;
+	virtual void new_performer(size_t misbehavingIndex, const competition::ranking_chart& rankingChart) override;
+
 
 	// proximity sensor
 	void substep_find_max_inverse_distance_to_wall(size_t i);
@@ -24,10 +28,15 @@ public:
 	void substep_detect_collisions(size_t i, mmr agentRadiusSquared);
 	void substep_decrease_ttl(size_t i);
 
-	// shuffles for control logic:
+	// shuffles for glue logic: setters
+	void set_agent_angle(size_t i, float newAngle);
+	void set_agent_position(size_t i, float newX, float newY);
+	void set_agent_collision_flags(size_t i, uint32_t newCollisionFlags = 0);
 	void set_agent_control(size_t i, size_t controlIndex, float controlValue);
-	const float& get_agent_score(size_t i) const;
-	bool get_agent_collision_flags(size_t i) const;
+
+	// shuffles for glue logic/renderer: getters
+	int64_t get_agent_score(size_t i) const;
+	bool get_agent_collision_flags(size_t i) const;	
 	const float& get_agent_sensor_value(size_t i, size_t sensorIndex) const;
 
 	// for automatic mapping
@@ -36,6 +45,19 @@ public:
 		ControlAcceleration, // gas/break pedal value [-1.0..1.0]
 		ControlCOUNT
 	};
+
+	struct sim_config {
+		float dT; // fixed time delta for physics simulation
+		float dT2; // squared time delta;
+		float agentRadius; // = 1.0f / 64
+		float steeringMagnitude; // = 64;
+		float accelerationMagnitude; // = 64;
+
+		float agentRespawnAngle; //  0.0f
+		float agentRespawnPosX; // 0.0f
+		float agentRespawnPosY; // 0.8f
+	};
+
 
 	MMR* _controlData[ControlCOUNT];
 
@@ -81,4 +103,5 @@ public:
 	size_t _nWalls; // number of walls (segments) on map
 	size_t _nSensors; // number of sensors, each agent has
 
+	sim_config _simConfig;
 };

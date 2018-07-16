@@ -16,37 +16,28 @@ License : FreeBSD(ISC) for non - commercial(personal, educational) use.
 #include "neural.h"
 #include "physics.h"
 #include "sheduler.h"
+#include "../vectorizedMathUtils/xoroshiro.h"
 
 #include <vector>
 
-class simulation {
+
+class simulation:
+	public competition
+{
 public:
 
-	simulation(size_t nAgents);
+	simulation(size_t nAgents, size_t nNeurons, size_t nWalls, size_t nSensors);
+
+	// competition interface:
+	virtual void translate_decision(i_problem& iProblem, const i_solver& iSolver) const override;
+	virtual void translate_situation(i_solver& iSolver, const i_problem& iProblem) const override;
+
 	void step();
-	void substep_natural_selection(size_t endAgent, size_t startAgent = 0);
-	void substep_neural_network(size_t endAgent, size_t startAgent = 0);
-	void substep_motion_integrator(size_t endAgent, size_t startAgent = 0);
-	
 
 protected:
 
-	std::vector< uint32_t >	_agentRatingRank; // indexes of agents, sorted by max scores
-
-protected:
-
-	size_t		_nAgents;
 	neural		_neuralEngine;
 	physics		_physicsEngine;
 	sheduler	_frameSheduler;
-
-	float dT; // fixed time delta for physics simulation
-	float dT2; // squared time delta;
-	float agentRadius; // = 1.0f / 64
-	float steeringMagnitude; // = 64;
-	float accelerationMagnitude; // = 64;
-
-	// number of worker cpu threads, 0 for autodetect, 1 for singlethreaded version, ...
-	size_t		_numThreads; 
 
 };

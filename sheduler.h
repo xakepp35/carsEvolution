@@ -12,7 +12,7 @@ public:
 	void step();
 
 
-	stamp now() const;
+	static stamp now();
 	stamp freq() const;
 	time map(const stamp& stampDelta) const;
 	stamp unmap(const time& timeDelta) const;

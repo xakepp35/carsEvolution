@@ -10,9 +10,11 @@ sheduler::sheduler():
 	QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER*>(&_stampFreq));
 }
 
+
 void sheduler::set_realtime_thread_priority() {
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
 }
+
 
 void sheduler::step() {
 	//curStamp = getstamp();
@@ -25,19 +27,33 @@ void sheduler::step() {
 	// then sleepex()...
 }
 
-sheduler::stamp sheduler::now() const {
+
+void ss() {
+	DWORD timeAdjustment = 0;
+	DWORD clockInterval100Ns = 0;
+	BOOL timeAdjustmentDisabled = 0;
+
+	// Get the frequency of the clock interrupt: clockInterval100Ns
+	GetSystemTimeAdjustment( &timeAdjustment, &clockInterval100Ns, &timeAdjustmentDisabled);
+}
+
+
+sheduler::stamp sheduler::now() {
 	stamp hpC = 0;
 	QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&hpC));
 	return hpC;
 }
 
+
 sheduler::stamp sheduler::freq() const {
 	return _stampFreq;
 }
 
+
 sheduler::time sheduler::map(const stamp& stampDelta) const {
 	return static_cast<time>(stampDelta) / freq();
 }
+
 
 sheduler::stamp sheduler::unmap(const time& timeDelta) const {
 	return static_cast<stamp>(timeDelta * freq());

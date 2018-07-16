@@ -6,10 +6,10 @@
 #include "../vectorizedMathUtils/mathfun.h"
 #include "../vectorizedMathUtils/fasttrigo.h"
 
-physics::physics(size_t nAgents):
+physics::physics(size_t nAgents, size_t nWalls, size_t nSensors):
 	//_nAgents(nAgents),
-	_nWalls(0),
-	_nSensors(0),
+	_nWalls(nWalls),
+	_nSensors(nSensors),
 	_wallS0X(nullptr),
 	_wallS0Y(nullptr),
 	_wallS0S1X(nullptr),
@@ -31,6 +31,21 @@ physics::physics(size_t nAgents):
 	_agentPathAdvancement	= aalloc(mmCount);
 	_agentCollision			= aalloc(mmCount);
 	_agentTTL				= aalloc<__m128i>(mmCount);
+
+	// init walls
+	mmCount = mm_count(nWalls);
+	_wallS0X = aalloc(mmCount);
+	_wallS0Y = aalloc(mmCount);
+	_wallS0S1X = aalloc(mmCount);
+	_wallS0S1Y = aalloc(mmCount);
+
+	// init sensors
+	mmCount = mm_count(nSensors);
+	_sensorAngle = aalloc(mmCount);
+
+	mmCount = mm_count(nAgents*nSensors);
+	_agentSensorProximity = aalloc(mmCount);
+
 }
 
 
@@ -56,21 +71,41 @@ physics::~physics() {
 }
 
 
-void physics::init_walls(size_t nWalls) {
-	auto mmCount = mm_count(nWalls);
-	_wallS0X		= aalloc(mmCount);
-	_wallS0Y		= aalloc(mmCount);
-	_wallS0S1X		= aalloc(mmCount);
-	_wallS0S1Y		= aalloc(mmCount);
-
+void physics::describe_situation(size_t numAgents) {
+	for (size_t i = 0; i < numAgents / 4; ++i)
+		substep_find_max_inverse_distance_to_wall(i);
 }
 
 
-void physics::init_sensors(size_t nSensors) {
-	auto mmCount = mm_count(nSensors);
-	_sensorAngle			= aalloc(mmCount);
-	_agentSensorProximity	= aalloc(mmCount);
+void physics::update_situation(competition::score_chart& accumulatedScore, size_t numAgents) {
+	// physics actuator: first loads physics constants for SSE
+	mmr amountSteering = _mm_set_ps1(_simConfig.dT2 * _simConfig.steeringMagnitude);
+	mmr amountAcceleration = _mm_set_ps1(_simConfig.dT2 * _simConfig.accelerationMagnitude);
+	mmr agentRadiusSquared = _mm_set_ps1(sqrt(_simConfig.agentRadius));
+
+	// do physics step stuff (SSE/AVX, heavyweight calculations)
+	for (size_t i = 0; i < numAgents / 4; ++i) {
+		substep_integrate_rotation(i, amountSteering);
+		substep_integrate_movement(i, amountAcceleration);
+		substep_estimate_circular_path_advancement(i);
+		substep_detect_collisions(i, agentRadiusSquared);
+	}
+
+	// update scores (individually, bool, lightweight logic)
+	for (size_t i = 0; i < numAgents; ++i) {
+		accumulatedScore[i] += get_agent_score(i); // updates score as it moves along circular track path
+		if (get_agent_collision_flags(i)) // whoops... BUMP!
+			accumulatedScore[i] = -1; // kill the bill
+	}
 }
+
+
+void physics::new_performer(size_t i, const competition::ranking_chart& rankingChart) {
+	set_agent_angle(i, _simConfig.agentRespawnAngle);
+	set_agent_position(i, _simConfig.agentRespawnPosX, _simConfig.agentRespawnPosY);
+	set_agent_collision_flags(i, 0);
+}
+
 
 
 
@@ -165,19 +200,36 @@ void physics::substep_decrease_ttl(size_t i) {
 }
 
 
+void physics::set_agent_angle(size_t i, float newAngle) {
+	reinterpret_cast<float*>(_agentAngle)[i] = newAngle;
+}
+
+
+void physics::set_agent_position(size_t i, float newX, float newY) {
+	reinterpret_cast<float*>(_agentPosX)[i] = newX;
+	reinterpret_cast<float*>(_agentPosY)[i] = newY;
+}
+
+
+void physics::set_agent_collision_flags(size_t i, uint32_t newCollisionFlags) {
+	reinterpret_cast<uint32_t*>(_agentCollision)[i] = newCollisionFlags;
+}
+
+
 void physics::set_agent_control(size_t i, size_t controlIndex, float controlValue) {
 	reinterpret_cast<float*>(_controlData[controlIndex])[i] = controlValue;
 }
 
 
-const float& physics::get_agent_score(size_t i) const {
-	return reinterpret_cast<const float *>(_agentPathAdvancement)[i];
+int64_t physics::get_agent_score(size_t i) const {
+	return static_cast< int64_t >(reinterpret_cast<const float *>(_agentPathAdvancement)[i] * 4096);
 }
 
 
 bool physics::get_agent_collision_flags(size_t i) const {
-	return reinterpret_cast<uint32_t*>(_agentCollision)[i] != 0;
+	return reinterpret_cast<const uint32_t*>(_agentCollision)[i] != 0;
 }
+
 
 
 const float & physics::get_agent_sensor_value(size_t i, size_t sensorIndex) const {
