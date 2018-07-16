@@ -55,7 +55,6 @@ void neural::new_predictor(size_t i, const competition::ranking_chart& rankingCh
 }
 
 
-
 mmr neural::substep_neuron_calc_dot(size_t i, size_t j) const {
 	auto agentNeuronDotProduct = _mm_setzero_ps(); //auto agentNeuronDotProduct = _agentNeuronBiases[j];
 	auto inputOffset = i*_inputWidth;
@@ -76,9 +75,11 @@ void neural::set_agent_input(size_t i, size_t inputIndex, float inputValue) {
 	reinterpret_cast<float*>(&_agentInputData[ i/4 ])[ inputIndex ] = inputValue;
 }
 
+
 void neural::set_agent_neuron_weight(size_t i, size_t neuronIndex, size_t inputIndex, float weightValue) {
 	reinterpret_cast<float*>(&_agentNeuronWeights[i / 4])[neuronIndex * _inputWidth + inputIndex] = weightValue;
 }
+
 
 const float & neural::get_neuron_output(size_t i, size_t neuronIndex) const {
 	auto neuronOffset = i/4*_nNeurons;

@@ -13,12 +13,12 @@
 #include <numeric>	// std::iota
 #include <algorithm> // std::sort
 
+
 simulation::simulation(size_t nAgents, size_t nNeurons, size_t nWalls, size_t nSensors):
 	competition(nAgents),
 	_neuralEngine(nAgents, nNeurons, nSensors),
 	_physicsEngine(nAgents, nWalls, nSensors),
-	_frameSheduler(),
-	_numThreads(0)
+	_frameSheduler()
 {}
 
 

@@ -6,6 +6,7 @@
 #include "../vectorizedMathUtils/mathfun.h"
 #include "../vectorizedMathUtils/fasttrigo.h"
 
+
 physics::physics(size_t nAgents, size_t nWalls, size_t nSensors):
 	//_nAgents(nAgents),
 	_nWalls(nWalls),
@@ -105,8 +106,6 @@ void physics::new_performer(size_t i, const competition::ranking_chart& rankingC
 	set_agent_position(i, _simConfig.agentRespawnPosX, _simConfig.agentRespawnPosY);
 	set_agent_collision_flags(i, 0);
 }
-
-
 
 
 void physics::substep_find_max_inverse_distance_to_wall(size_t i) {
@@ -229,7 +228,6 @@ int64_t physics::get_agent_score(size_t i) const {
 bool physics::get_agent_collision_flags(size_t i) const {
 	return reinterpret_cast<const uint32_t*>(_agentCollision)[i] != 0;
 }
-
 
 
 const float & physics::get_agent_sensor_value(size_t i, size_t sensorIndex) const {

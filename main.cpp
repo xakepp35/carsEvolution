@@ -3,26 +3,10 @@
 
 #include <iostream>
 
-void benchmark() {
-	sheduler s;
-	s.set_realtime_thread_priority();
-
-	physics p(1024);
-	do {
-		auto prevStamp = s.now();
-		do {
-			p.step_motion_integrator(1024);
-			s.step();
-		} while ((s.now() - prevStamp) < s.freq());
-		auto cpuFreq = 4.0E9; // 4.0 GHz CPU
-		std::cout << s._nStep << " it/s\t" << cpuFreq / s._nStep << " cycles/it\n";
-		s._nStep = 0;
-	} while (true);
-}
-
-int main() {
+// cpuFreq = 4.2 GHz CPU
+void benchmark_physics(double cpuFreq = 4.2E9) {
 	std::cout <<
-		"Natural Selection of Neural Network(Perceptrone) weights demo\n"
+		"Car racing physics engine benchmark\n"
 		"\n"
 		"Date : Feb 2018\n"
 		"Author : xakepp35@gmail.com\n"
@@ -33,21 +17,24 @@ int main() {
 	sheduler s;
 	s.set_realtime_thread_priority();
 
-	physics p(1024);
+	physics p(1024, 4, 4);
 
-	
+	competition::score_chart sc(1024);
 
 	do {
 		auto prevStamp = s.now();
 		do {
-			p.step_motion_integrator(1024);
+			p.update_situation(sc,1024);
 			s.step();
 		}
 		while ((s.now() - prevStamp) < s.freq() );
-		auto cpuFreq = 4.0E9; // 4.0 GHz CPU
-		std::cout << s._nStep << " it/s\t" << cpuFreq / s._nStep << " cycles/it\n";
+		std::cout << s._nStep << " it/s\t(" << cpuFreq / s._nStep << " CPU cycles/it)\n";
 		s._nStep = 0;
 	} while (true);
-
 }
 
+
+int main() {
+	benchmark_physics();
+	return 0;
+}
