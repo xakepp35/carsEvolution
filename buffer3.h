@@ -36,10 +36,14 @@ public:
 	}
 
 	// sync method, call once to obtain "latest" data reference, before you are going read and after you wrote
-	value& operator[](const kind& workerKind) {
+	value& swap_buffers(const kind& workerKind) {
 		auto& currentPtr = _ownedPtrs[static_cast<size_t>(workerKind)];
 		currentPtr = _ptrExchange.exchange(currentPtr);
 		return *currentPtr;
+	}
+
+	value& operator[](const kind& workerKind) {
+		return swap_buffers(workerKind);
 	}
 
 protected:

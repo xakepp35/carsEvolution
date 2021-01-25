@@ -4,12 +4,13 @@
 
 #include <iostream>
 
-drawer_gl1::drawer_gl1()
+drawer_gl1::drawer_gl1():
+	enableRender(true)
 {}
 
 void drawer_gl1::draw_frame(renderer& r) {
 	// sync with render thread
-	auto& dataDynamic(_renderSync[render_sync::Reader]);
+	auto& dataDynamic(_renderSync.swap_buffers(render_sync::Reader));
 	enableRender = true;
 	if (enableRender) {
 

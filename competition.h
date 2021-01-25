@@ -67,7 +67,7 @@ public:
 	// returns total participants count
 	size_t competition::participant_count() const;
 
-	bool is_inefficient(size_t i) const;
+	bool is_inefficient(size_t i, i_solver& iSolver, i_problem& iProblem) const;
 
 protected:
 

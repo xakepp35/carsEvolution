@@ -83,6 +83,7 @@ void physics::update_situation(competition::score_chart& accumulatedScore, size_
 	mmr amountSteering = _mm_set_ps1(_simConfig.dT2 * _simConfig.steeringMagnitude);
 	mmr amountAcceleration = _mm_set_ps1(_simConfig.dT2 * _simConfig.accelerationMagnitude);
 	mmr agentRadiusSquared = _mm_set_ps1(sqrt(_simConfig.agentRadius));
+	//mmr agentRadiusSquared = _mm_set_ps1(_simConfig.agentRadius* _simConfig.agentRadius);
 
 	// do physics step stuff (SSE/AVX, heavyweight calculations)
 	for (size_t i = 0; i < numAgents / 4; ++i) {
@@ -95,7 +96,8 @@ void physics::update_situation(competition::score_chart& accumulatedScore, size_
 
 	// update scores (individually, bool, lightweight logic)
 	for (size_t i = 0; i < numAgents; ++i) {
-		accumulatedScore[i] += get_agent_score(i); // updates score as it moves along circular track path
+		auto scoreUpdate = get_agent_score(i);
+		accumulatedScore[i] += 512; // scoreUpdate; // updates score as it moves along circular track path
 		if (get_agent_collision_flags(i)) // whoops... BUMP!
 			accumulatedScore[i] = -1; // kill the bill
 	}
@@ -173,16 +175,20 @@ void physics::substep_estimate_circular_path_advancement(size_t i) {
 	_agentPathAdvancement[i] = _mm_sub_ps(_agentPathAdvancement[i], stepAdvancement);
 }
 
-
+//TODO: fix ME!
 void physics::substep_detect_collisions(size_t i, mmr agentRadiusSquared) {
-	auto agentCollisionMask = _mm_setzero_ps();
-	auto agentWallArrayOffset = i*_nWalls;
+	//agentRadiusSquared = _mm_set1_ps(1.0f/1024);
+	//unsigned int ss = 0xffffffff;
+	//auto agentCollisionMask = _mm_set1_ps(*reinterpret_cast<float*>(&ss)); // ;
+
+	auto agentCollisionMask = _mm_setzero_ps(); //
+	//auto agentWallArrayOffset = i*_nWalls;
 	for (size_t j = 0; j < _nWalls; ++j) {
 		//void get_agent_wall_distances();
 		auto wallToAgentX = _mm_sub_ps(_agentPosX[i], _wallS0X[j]);
 		auto wallToAgentY = _mm_sub_ps(_agentPosY[i], _wallS0Y[j]);
 
-		//void estimate_collisions(); 
+		//void estimate_collisions();
 		//to avoid expensive raycasting i assume agent is not moving fast
 		//agentSpeed/dT < 2*agentRadius; otherwise tunelling occurs
 		//also its not a circle, but a thin ellipse with zero width parallel the wall
@@ -196,7 +202,8 @@ void physics::substep_detect_collisions(size_t i, mmr agentRadiusSquared) {
 void physics::substep_decrease_ttl(size_t i) {
 	_agentTTL[i] = _mm_sub_epi32(_agentTTL[i], _mm_set1_epi32(1));
 	auto agentDeathMask = _mm_cvtepi32_ps( _mm_cmpgt_epi32(_agentTTL[i], _mm_set1_epi32(0)) );
-	_agentCollision[i] = _mm_or_ps(_agentCollision[i], agentDeathMask);
+	//TODO: enable TTL
+	//_agentCollision[i] = _mm_or_ps(_agentCollision[i], agentDeathMask);
 }
 
 
@@ -229,7 +236,7 @@ void physics::set_agent_ttl(size_t i, uint32_t newTTL) {
 
 
 int64_t physics::get_agent_score(size_t i) const {
-	return static_cast< int64_t >(reinterpret_cast<const float *>(_agentPathAdvancement)[i] * 65536);
+	return static_cast< int64_t >(reinterpret_cast<const float *>(_agentPathAdvancement)[i] * 65536.f* 65536.f);
 }
 
 
