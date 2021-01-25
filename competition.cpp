@@ -51,14 +51,18 @@ const competition::ranking_chart& competition::sort_ranking_chart() {
 	return rankingChart;
 }
 
+bool competition::is_inefficient(size_t i) const {
+	return (accumulatedScore[i] < 0) || (accumulatedCost[i] > accumulatedScore[i]);
+}
 
 void competition::perform_evolution(i_solver& iSolver, i_problem& iProblem) {
+	auto bestExists = !is_inefficient(rankingChart[0]);
 	for (auto& i : rankingChart) {
-		if ((accumulatedScore[i] < 0) || (accumulatedCost[i] > accumulatedScore[i])) { // situation is deadly or decision was too expensive
-			iSolver.new_predictor(i, rankingChart);
+		if (is_inefficient(i)) { // situation is deadly or decision was too expensive
+			iSolver.new_predictor(i, rankingChart, bestExists);
 			accumulatedCost[i] = 1;
-			iProblem.new_performer(i, rankingChart);
-			accumulatedScore[i] = 0; // even first step have to be efficient, or attempt fail on next check
+			iProblem.new_performer(i, rankingChart, bestExists);
+			accumulatedScore[i] = 0; // even first step have to be efficient, or attempt fail on next check;
 		}
 	}
 }

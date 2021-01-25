@@ -1,8 +1,21 @@
 #pragma once
 
+#define SSTRINGIFY(X) #X
+#define STRINGIFY(X) SSTRINGIFY(X)
+
 #include <cstdint>
+
+
+
+#include <exception>
+#define CHK_EX(FAIL_CONDITION) { auto isFailed = FAIL_CONDITION; if( isFailed ) throw std::exception(__FUNCTION__ "(): " STRINGIFY(FAIL_CONDITION) ); }
+#define CHK_PTR(NOT_NULL_RESULT) { auto isFailed = ((NOT_NULL_RESULT)==0); if( isFailed ) throw std::exception(__FUNCTION__ "(): " STRINGIFY(NOT_NULL_RESULT) ); }
+
+
 #include <emmintrin.h>
 #include <xmmintrin.h>
+
+
 
 // to easy switch to AVX2..
 #define MM_ALIGMENT 16

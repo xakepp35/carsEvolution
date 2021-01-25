@@ -90,6 +90,7 @@ void physics::update_situation(competition::score_chart& accumulatedScore, size_
 		substep_integrate_movement(i, amountAcceleration);
 		substep_estimate_circular_path_advancement(i);
 		substep_detect_collisions(i, agentRadiusSquared);
+		//substep_decrease_ttl(i);
 	}
 
 	// update scores (individually, bool, lightweight logic)
@@ -101,10 +102,11 @@ void physics::update_situation(competition::score_chart& accumulatedScore, size_
 }
 
 
-void physics::new_performer(size_t i, const competition::ranking_chart& rankingChart) {
-	set_agent_angle(i, _simConfig.agentRespawnAngle);
-	set_agent_position(i, _simConfig.agentRespawnPosX, _simConfig.agentRespawnPosY);
+void physics::new_performer(size_t i, const competition::ranking_chart& rankingChart, bool bestExists) {
+	set_agent_angle(i, _spawnConfig.agentRespawnAngle);
+	set_agent_position(i, _spawnConfig.agentRespawnPosX, _spawnConfig.agentRespawnPosY);
 	set_agent_collision_flags(i, 0);
+	set_agent_ttl(i, _spawnConfig.agentTTL);
 }
 
 
@@ -124,7 +126,7 @@ void physics::substep_find_max_inverse_distance_to_wall(size_t i) {
 												 // get_sensor_direction();
 			auto agentSensorAngle = _mm_add_ps(_agentAngle[i], _sensorAngle[k]);
 			__m128 sensorDirX, sensorDirY;
-			FT::sincos_ps(agentSensorAngle, &sensorDirX, &sensorDirY);
+			FT::sincos_ps(agentSensorAngle, &sensorDirY, &sensorDirX);
 			// proximity=max(proximity, get_sensor_proximity());
 			auto newSensorProximity = pu_ray_segment_distance_inverse(wallToAgentX, wallToAgentY, _wallS0S1X[j], _wallS0S1Y[j], sensorDirX, sensorDirY);
 			_agentSensorProximity[agentSensorArrayOffset + k] = _mm_max_ps(_agentSensorProximity[agentSensorArrayOffset + k], newSensorProximity);
@@ -166,10 +168,9 @@ void physics::substep_integrate_movement(size_t i, mmr amountAcceleration) {
 
 
 void physics::substep_estimate_circular_path_advancement(size_t i) {
-	_agentPathAdvancement[i] = _mm_add_ps(_agentPathAdvancement[i], FTA::atan2_ps(
-		_mm_cross_ps(_agentPPosX[i], _agentPPosY[i], _agentPosX[i], _agentPosY[i]),
-		_mm_dot_ps(_agentPPosX[i], _agentPPosY[i], _agentPosX[i], _agentPosY[i])
-	));
+	auto stepAdvancement = pu_circular_2d_path_advancement(_agentPPosX[i], _agentPPosY[i], _agentPosX[i], _agentPosY[i]);
+	//_agentPathAdvancement[i] = _mm_add_ps(_agentPathAdvancement[i], stepAdvancement);
+	_agentPathAdvancement[i] = _mm_sub_ps(_agentPathAdvancement[i], stepAdvancement);
 }
 
 
@@ -199,6 +200,11 @@ void physics::substep_decrease_ttl(size_t i) {
 }
 
 
+void physics::set_agent_control(size_t i, size_t controlIndex, float controlValue) {
+	reinterpret_cast<float*>(_controlData[controlIndex])[i] = controlValue;
+}
+
+
 void physics::set_agent_angle(size_t i, float newAngle) {
 	reinterpret_cast<float*>(_agentAngle)[i] = newAngle;
 }
@@ -207,6 +213,8 @@ void physics::set_agent_angle(size_t i, float newAngle) {
 void physics::set_agent_position(size_t i, float newX, float newY) {
 	reinterpret_cast<float*>(_agentPosX)[i] = newX;
 	reinterpret_cast<float*>(_agentPosY)[i] = newY;
+	reinterpret_cast<float*>(_agentPPosX)[i] = newX;
+	reinterpret_cast<float*>(_agentPPosY)[i] = newY;
 }
 
 
@@ -215,13 +223,13 @@ void physics::set_agent_collision_flags(size_t i, uint32_t newCollisionFlags) {
 }
 
 
-void physics::set_agent_control(size_t i, size_t controlIndex, float controlValue) {
-	reinterpret_cast<float*>(_controlData[controlIndex])[i] = controlValue;
+void physics::set_agent_ttl(size_t i, uint32_t newTTL) {
+	reinterpret_cast<uint32_t*>(_agentTTL)[i] = newTTL;
 }
 
 
 int64_t physics::get_agent_score(size_t i) const {
-	return static_cast< int64_t >(reinterpret_cast<const float *>(_agentPathAdvancement)[i] * 4096);
+	return static_cast< int64_t >(reinterpret_cast<const float *>(_agentPathAdvancement)[i] * 65536);
 }
 
 
@@ -231,5 +239,7 @@ bool physics::get_agent_collision_flags(size_t i) const {
 
 
 const float & physics::get_agent_sensor_value(size_t i, size_t sensorIndex) const {
-	return reinterpret_cast<const float*>(_agentSensorProximity + (i / 4)*_nSensors + sensorIndex)[i % 4];
+	auto currentSensor = *( _agentSensorProximity + (i / 4)*_nSensors + sensorIndex);
+	auto extendedRange = _mm_sub_ps(_mm_mul_ps(currentSensor, _mm_set_ps1(2)), _mm_set_ps1(1));
+	return extendedRange.m128_f32[i % 4];
 }

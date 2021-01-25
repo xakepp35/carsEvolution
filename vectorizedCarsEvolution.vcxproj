@@ -75,6 +75,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>../glfw-3.2.1/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -82,6 +83,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>../glfw-3.2.1/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -95,6 +97,7 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <AdditionalIncludeDirectories>../glfw-3.2.1/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -112,6 +115,7 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <AdditionalIncludeDirectories>../glfw-3.2.1/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -120,7 +124,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="competition.cpp" />
+    <ClCompile Include="drawer_gl1.cpp" />
     <ClCompile Include="neural.cpp" />
+    <ClCompile Include="renderer.cpp" />
     <ClCompile Include="sheduler.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="physics.cpp" />
@@ -128,13 +134,20 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="base.h" />
+    <ClInclude Include="buffer3.h" />
     <ClInclude Include="competition.h" />
+    <ClInclude Include="drawer_gl1.h" />
     <ClInclude Include="neural.h" />
+    <ClInclude Include="neural_perceptrone.h" />
     <ClInclude Include="physics.h" />
+    <ClInclude Include="renderer.h" />
     <ClInclude Include="sheduler.h" />
     <ClInclude Include="simulation.h" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\glfw-3.2.1\glfw3.vcxproj">
+      <Project>{7fb55129-59ca-442a-a0f0-b6c008f69b06}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\vectorizedMathUtils\vectorizedMathUtils.vcxproj">
       <Project>{61892354-05eb-469f-b253-b6801181cfe9}</Project>
     </ProjectReference>

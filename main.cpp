@@ -1,5 +1,4 @@
-#include "sheduler.h"
-#include "physics.h"
+#include "simulation.h"
 
 #include <iostream>
 
@@ -35,6 +34,8 @@ void benchmark_physics(double cpuFreq = 4.2E9) {
 
 
 int main() {
-	benchmark_physics();
+	simulation s(1024, 4, 8, 4);
+	s.main();
+	//benchmark_physics();
 	return 0;
 }

@@ -4,6 +4,11 @@
 #include <Windows.h>
 
 
+static int(__stdcall *NtDelayExecution)(BOOL Alertable, PLARGE_INTEGER DelayInterval) = (int(__stdcall*)(BOOL, PLARGE_INTEGER)) GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtDelayExecution");
+static int(__stdcall *NtSetTimerResolution)(ULONG DesiredResolution, BOOL SetResolution, PULONG CurrentResolution) = (int(__stdcall*)(ULONG, BOOL, PULONG)) GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtSetTimerResolution");
+static int(__stdcall *NtQueryTimerResolution)(PULONG MinimumResolution, PULONG MaximumResolution, PULONG CurrentResolution) = (int(__stdcall*)(PULONG, PULONG, PULONG)) GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtQueryTimerResolution");
+
+
 sheduler::sheduler():
 	_nStep(0)
 {

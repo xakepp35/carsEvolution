@@ -1,5 +1,5 @@
 /*
-	Cost-Efficiency-based competition/evolution abstract engine
+	Cost-Efficiency-based competition/evolution abstraction engine
 
 	Date : Jun 2018
 	Author : xakepp35@gmail.com
@@ -18,7 +18,7 @@ public:
 	typedef int64_t score_t;
 
 	typedef std::vector< index_t > ranking_chart;
-	typedef std::vector< index_t > score_chart;
+	typedef std::vector< score_t > score_chart;
 
 
 	class i_solver {
@@ -27,8 +27,8 @@ public:
 		// predicts some control solution, or "decision" for forthcoming problem step, and updates spent costs
 		virtual void predict_decision(score_chart& accumulatedCost, size_t participantCount) = 0;
 
-		// replace misbehaving predictor with a new one, rankingChart[0] is most-valued predictor
-		virtual void new_predictor(size_t misbehavingIndex, const ranking_chart& rankingChart) = 0;
+		// replace misbehaving predictor with a new one, rankingChart[0] is most-valued predictor; bestExists is true when best participant was cost-efficient
+		virtual void new_predictor(size_t misbehavingIndex, const ranking_chart& rankingChart, bool bestExists) = 0;
 
 	};
 
@@ -42,7 +42,7 @@ public:
 		virtual void update_situation(score_chart& accumulatedScore, size_t participantCount) = 0;
 
 		// replace misbehaving performer with a new one, rankingChart[0] is best-valued performer
-		virtual void new_performer(size_t misbehavingIndex, const ranking_chart& rankingChart) = 0;
+		virtual void new_performer(size_t misbehavingIndex, const ranking_chart& rankingChart, bool bestExists) = 0;
 
 	};
 
@@ -67,6 +67,7 @@ public:
 	// returns total participants count
 	size_t competition::participant_count() const;
 
+	bool is_inefficient(size_t i) const;
 
 protected:
 

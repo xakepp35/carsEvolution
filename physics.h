@@ -13,7 +13,7 @@ public:
 	// i_problem interface
 	virtual void describe_situation(size_t numAgents) override;
 	virtual void update_situation(competition::score_chart& accumulatedScore, size_t numAgents) override;
-	virtual void new_performer(size_t misbehavingIndex, const competition::ranking_chart& rankingChart) override;
+	virtual void new_performer(size_t misbehavingIndex, const competition::ranking_chart& rankingChart, bool bestExists) override;
 
 
 	// proximity sensor
@@ -29,10 +29,12 @@ public:
 	void substep_decrease_ttl(size_t i);
 
 	// shuffles for glue logic: setters
+	void set_agent_control(size_t i, size_t controlIndex, float controlValue);
 	void set_agent_angle(size_t i, float newAngle);
 	void set_agent_position(size_t i, float newX, float newY);
 	void set_agent_collision_flags(size_t i, uint32_t newCollisionFlags = 0);
-	void set_agent_control(size_t i, size_t controlIndex, float controlValue);
+	void set_agent_ttl(size_t i, uint32_t newTTL);
+	
 
 	// shuffles for glue logic/renderer: getters
 	int64_t get_agent_score(size_t i) const;
@@ -52,6 +54,10 @@ public:
 		float agentRadius; // = 1.0f / 64
 		float steeringMagnitude; // = 64;
 		float accelerationMagnitude; // = 64;
+	};
+
+	struct spawn_config {
+		uint32_t agentTTL; // max time to live in ticks
 
 		float agentRespawnAngle; //  0.0f
 		float agentRespawnPosX; // 0.0f
@@ -103,5 +109,6 @@ public:
 	size_t _nWalls; // number of walls (segments) on map
 	size_t _nSensors; // number of sensors, each agent has
 
-	sim_config _simConfig;
+	sim_config		_simConfig;
+	spawn_config	_spawnConfig;
 };
