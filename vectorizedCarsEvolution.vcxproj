@@ -138,7 +138,6 @@
     <ClInclude Include="competition.h" />
     <ClInclude Include="drawer_gl1.h" />
     <ClInclude Include="neural.h" />
-    <ClInclude Include="neural_perceptrone.h" />
     <ClInclude Include="physics.h" />
     <ClInclude Include="renderer.h" />
     <ClInclude Include="sheduler.h" />

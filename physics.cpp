@@ -34,7 +34,7 @@ physics::physics(size_t nAgents, size_t nWalls, size_t nSensors):
 	_agentTTL				= aalloc<__m128i>(mmCount);
 
 	// init walls
-	mmCount = mm_count(nWalls);
+	mmCount = mm_count(nWalls*4);
 	_wallS0X = aalloc(mmCount);
 	_wallS0Y = aalloc(mmCount);
 	_wallS0S1X = aalloc(mmCount);
@@ -47,6 +47,16 @@ physics::physics(size_t nAgents, size_t nWalls, size_t nSensors):
 	mmCount = mm_count(nAgents*nSensors);
 	_agentSensorProximity = aalloc(mmCount);
 
+}
+
+void physics::populate_walls(const std::vector< physics::wall_segment >& vWalls) {
+	for (size_t i = 0; i < vWalls.size(); ++i) {
+		auto& wallData(vWalls[i]);
+		_wallS0X[i] = _mm_set_ps1(wallData[0]);
+		_wallS0Y[i] = _mm_set_ps1(wallData[1]);
+		_wallS0S1X[i] = _mm_set_ps1(wallData[2] - wallData[0]);
+		_wallS0S1Y[i] = _mm_set_ps1(wallData[3] - wallData[1]);
+	}
 }
 
 
@@ -77,12 +87,16 @@ void physics::describe_situation(size_t numAgents) {
 		substep_find_max_inverse_distance_to_wall(i);
 }
 
+template<typename T>
+T sqr(const T& x) {
+	return x * x;
+}
 
 void physics::update_situation(competition::score_chart& accumulatedScore, size_t numAgents) {
 	// physics actuator: first loads physics constants for SSE
 	mmr amountSteering = _mm_set_ps1(_simConfig.dT2 * _simConfig.steeringMagnitude);
 	mmr amountAcceleration = _mm_set_ps1(_simConfig.dT2 * _simConfig.accelerationMagnitude);
-	mmr agentRadiusSquared = _mm_set_ps1(sqrt(_simConfig.agentRadius));
+	mmr agentRadiusSquared = _mm_set_ps1(sqr(_simConfig.agentRadius));
 	//mmr agentRadiusSquared = _mm_set_ps1(_simConfig.agentRadius* _simConfig.agentRadius);
 
 	// do physics step stuff (SSE/AVX, heavyweight calculations)
@@ -96,8 +110,8 @@ void physics::update_situation(competition::score_chart& accumulatedScore, size_
 
 	// update scores (individually, bool, lightweight logic)
 	for (size_t i = 0; i < numAgents; ++i) {
-		auto scoreUpdate = get_agent_score(i);
-		accumulatedScore[i] += 512; // scoreUpdate; // updates score as it moves along circular track path
+		auto newScore = get_agent_score(i);
+		accumulatedScore[i] = newScore; // updates score as it moves along circular track path
 		if (get_agent_collision_flags(i)) // whoops... BUMP!
 			accumulatedScore[i] = -1; // kill the bill
 	}
@@ -107,8 +121,15 @@ void physics::update_situation(competition::score_chart& accumulatedScore, size_
 void physics::new_performer(size_t i, const competition::ranking_chart& rankingChart, bool bestExists) {
 	set_agent_angle(i, _spawnConfig.agentRespawnAngle);
 	set_agent_position(i, _spawnConfig.agentRespawnPosX, _spawnConfig.agentRespawnPosY);
-	set_agent_collision_flags(i, 0);
+	/*if (bestExists) {
+		set_agent_angle(i, get_agent_angle(i));
+		set_agent_position(i, get_agent_position_x(i), get_agent_position_y(i));
+	}*/
+
 	set_agent_ttl(i, _spawnConfig.agentTTL);
+
+	set_agent_collision_flags(i, 0);
+	set_agent_score(i, 0);
 }
 
 
@@ -216,7 +237,6 @@ void physics::set_agent_angle(size_t i, float newAngle) {
 	reinterpret_cast<float*>(_agentAngle)[i] = newAngle;
 }
 
-
 void physics::set_agent_position(size_t i, float newX, float newY) {
 	reinterpret_cast<float*>(_agentPosX)[i] = newX;
 	reinterpret_cast<float*>(_agentPosY)[i] = newY;
@@ -234,11 +254,23 @@ void physics::set_agent_ttl(size_t i, uint32_t newTTL) {
 	reinterpret_cast<uint32_t*>(_agentTTL)[i] = newTTL;
 }
 
-
-int64_t physics::get_agent_score(size_t i) const {
-	return static_cast< int64_t >(reinterpret_cast<const float *>(_agentPathAdvancement)[i] * 65536.f* 65536.f);
+float physics::get_agent_angle(size_t i) const {
+	return reinterpret_cast<float*>(_agentAngle)[i];
 }
 
+float physics::get_agent_position_x(size_t i) const {
+	return reinterpret_cast<float*>(_agentPosX)[i];
+}
+
+float physics::get_agent_position_y(size_t i) const {
+	return reinterpret_cast<float*>(_agentPosY)[i];
+}
+
+int64_t physics::get_agent_score(size_t i) const {
+	float scale = 65536.f;
+	scale *= 65536.f;
+	return static_cast< int64_t >(reinterpret_cast<const float *>(_agentPathAdvancement)[i] * scale);
+}
 
 bool physics::get_agent_collision_flags(size_t i) const {
 	return reinterpret_cast<const uint32_t*>(_agentCollision)[i] != 0;
@@ -249,4 +281,8 @@ const float & physics::get_agent_sensor_value(size_t i, size_t sensorIndex) cons
 	auto currentSensor = *( _agentSensorProximity + (i / 4)*_nSensors + sensorIndex);
 	auto extendedRange = _mm_sub_ps(_mm_mul_ps(currentSensor, _mm_set_ps1(2)), _mm_set_ps1(1));
 	return extendedRange.m128_f32[i % 4];
+}
+
+void physics::set_agent_score(size_t i, int64_t newScore) {
+	reinterpret_cast<float*>(_agentPathAdvancement)[i] = static_cast<float>(newScore) / 65536 / 65536;
 }

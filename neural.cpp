@@ -57,27 +57,34 @@ void neural::predict_decision(competition::score_chart& accumulatedCost, size_t 
 		}
 	}
 
-	for (size_t i = 0; i < numAgents; ++i)
+	/*for (size_t i = 0; i < numAgents; ++i)
 		accumulatedCost[i] += _nNeurons;
+		*/
 }
 
 // TODO: sse distributions, weight lerping, so on
 void neural::new_predictor(size_t i, const competition::ranking_chart& rankingChart, bool bestExists) {
 	// std::uniform_real_distribution<scalar> uDweights(wMin, wMax);
-	if (bestExists) { // there exists some best agent. make a copy of him and do crossover mutation with random changes
-		for (size_t j = 0; j < _nNeurons; ++j) {
-			for (size_t k = 0; k < _inputWidth; ++k) {
+	
+	for (size_t j = 0; j < _nNeurons; ++j) {
+		for (size_t k = 0; k < _inputWidth; ++k) {
+
+			// fully random assigment would generate correct decision faster than small random adjustment at the very beginning
+			float newValue[4];
+			_mm_store_ps(newValue, _weightGen.normal(4.0f, -2.0f));
+
+			if (bestExists) { // there exists some best agent. make a copy of him and do crossover mutation with random changes
+				const float targetAlpha = 0; // 1.0f / 16;
+				float bestValue = get_agent_neuron_weight(rankingChart[0], j, k);					
 				//	reinterpret_cast<scalar*>(outResult._vWeight.data())[i] = lerp(reinterpret_cast<const scalar*>(&_vWeight[0])[i], reinterpret_cast<const scalar*>(&targetcell._vWeight[0])[i], targetAlpha);
+				newValue[0] *= targetAlpha;
+				newValue[0] += (1.0f - targetAlpha) * bestValue;
 			}
-		}
-	}
-	else {	// we just started or cost efficient agent is still not found: better fill predictor's brain with fully random stuff
-		for (size_t j = 0; j < _nNeurons; ++j) { // fully random assigment would generate correct decision faster than small random adjustment at the very beginning
-			for (size_t k = 0; k < _inputWidth; ++k) {
-				float newValue[4];
-				_mm_store_ps(newValue, _weightGen.normal());
-				set_agent_neuron_weight(i, j, k, newValue[0]);
+			else {
+				newValue[0] *= 2;
 			}
+
+			set_agent_neuron_weight(i, j, k, newValue[0]);
 		}
 	}
 }
@@ -106,6 +113,10 @@ void neural::set_agent_input(size_t i, size_t inputIndex, float inputValue) {
 
 void neural::set_agent_neuron_weight(size_t i, size_t neuronIndex, size_t inputIndex, float weightValue) {
 	reinterpret_cast<float*>(&_agentNeuronWeights[i / 4])[neuronIndex * _inputWidth + inputIndex] = weightValue;
+}
+
+float neural::get_agent_neuron_weight(size_t i, size_t neuronIndex, size_t inputIndex) const {
+	return reinterpret_cast<const float*>(&_agentNeuronWeights[i / 4])[neuronIndex * _inputWidth + inputIndex];
 }
 
 

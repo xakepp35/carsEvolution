@@ -68,8 +68,5 @@
     <ClInclude Include="buffer3.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="neural_perceptrone.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

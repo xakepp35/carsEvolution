@@ -32,6 +32,7 @@ public:
 	public:
 
 		uint64_t nTick;
+		size_t rcBest;
 
 		size_t carCount;
 
@@ -68,5 +69,6 @@ protected:
 	
 	bool enableRender;
 	bool enableFOVrender;
+	uint64_t lastRenderedTick;
 
 };

@@ -22,6 +22,7 @@ public:
 	// shuffles for glue logic (setters):
 	void set_agent_input(size_t i, size_t inputIndex, float inputValue);
 	void set_agent_neuron_weight(size_t i, size_t neuronIndex, size_t inputIndex, float weightValue);
+	float get_agent_neuron_weight(size_t i, size_t neuronIndex, size_t inputIndex) const;
 
 	// shuffles for glue logic (getters):
 	const float& get_neuron_output(size_t i, size_t neuronIndex) const;

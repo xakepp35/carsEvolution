@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include "base.h"
 #include "competition.h"
 
@@ -7,8 +9,13 @@ class physics: public competition::i_problem
 {
 public:
 
+	// wall is a segment, (x0,y0)-(x1,y1); data is stored contigously in that layout
+	typedef std::array< float, 4 > wall_segment;
+
 	physics(size_t nAgents, size_t nWalls, size_t nSensors);
 	~physics();
+
+	void populate_walls(const std::vector< physics::wall_segment >& vWalls);
 
 	// i_problem interface
 	virtual void describe_situation(size_t numAgents) override;
@@ -34,12 +41,15 @@ public:
 	void set_agent_position(size_t i, float newX, float newY);
 	void set_agent_collision_flags(size_t i, uint32_t newCollisionFlags = 0);
 	void set_agent_ttl(size_t i, uint32_t newTTL);
-	
+	void set_agent_score(size_t i, int64_t newScore);
 
 	// shuffles for glue logic/renderer: getters
-	int64_t get_agent_score(size_t i) const;
+	float get_agent_angle(size_t i) const;
+	float get_agent_position_x(size_t i) const;
+	float get_agent_position_y(size_t i) const;
 	bool get_agent_collision_flags(size_t i) const;	
 	const float& get_agent_sensor_value(size_t i, size_t sensorIndex) const;
+	int64_t get_agent_score(size_t i) const;
 
 	// for automatic mapping
 	enum control: size_t {

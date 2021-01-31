@@ -9,7 +9,7 @@ competition::competition(size_t participantCount) {
 	std::iota(rankingChart.begin(), rankingChart.end(), 0);
 
 	accumulatedScore.resize(participantCount);
-	std::fill(accumulatedScore.begin(), accumulatedScore.end(), 0);
+	std::fill(accumulatedScore.begin(), accumulatedScore.end(), -1);
 
 	accumulatedCost.resize(participantCount);
 	std::fill(accumulatedCost.begin(), accumulatedCost.end(), 1);
@@ -51,10 +51,8 @@ const competition::ranking_chart& competition::sort_ranking_chart() {
 	return rankingChart;
 }
 
-int ddd = 0;
-
 bool competition::is_inefficient(size_t i, i_solver& iSolver, i_problem& iProblem) const {
-	return (accumulatedScore[i] < 0) || (accumulatedCost[i] > accumulatedScore[i]);
+	return (accumulatedScore[i] <= 0) || (accumulatedCost[i] > accumulatedScore[i]);
 }
 
 void competition::perform_evolution(i_solver& iSolver, i_problem& iProblem) {

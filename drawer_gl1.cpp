@@ -3,24 +3,45 @@
 #include "../vectorizedMathUtils/fasttrigo.h"
 
 #include <iostream>
+#include <sstream>
+#include <string>
+
+std::string i2s(const uint64_t i) {
+	std::ostringstream s;
+	s << i;
+	return s.str();
+}
 
 drawer_gl1::drawer_gl1():
-	enableRender(true)
+	enableRender(true),
+	lastRenderedTick(0)
 {}
 
 void drawer_gl1::draw_frame(renderer& r) {
 	// sync with render thread
 	auto& dataDynamic(_renderSync.swap_buffers(render_sync::Reader));
-	enableRender = true;
-	if (enableRender) {
+	if (enableRender && (lastRenderedTick < dataDynamic.nTick)) {
+		
+		lastRenderedTick = dataDynamic.nTick;
+		std::ostringstream newTitle;
+		newTitle << "t=" << lastRenderedTick << "; best=" << dataDynamic.rcBest;
+		r.set_title(newTitle.str().c_str());
 
 		glClearColor(0, 0, 0, 0);
 		glClear(GL_COLOR_BUFFER_BIT); // | GL_DEPTH_BUFFER_BIT);
 
 		// render walls
 		glLineWidth(1.0);
-		glColor3f(1.0, 1.0, 0.0);
+		
 		glBegin(GL_LINES);
+		glColor3f(1.0, 0.5f, 0.0);
+		glVertex2f(0.0f, 1.0f);
+		
+		glVertex2f(
+			dataDynamic.carPosX[dataDynamic.rcBest / 4].m128_f32[dataDynamic.rcBest % 4],
+			dataDynamic.carPosY[dataDynamic.rcBest / 4].m128_f32[dataDynamic.rcBest % 4]
+		);
+		glColor3f(1.0, 1.0, 0.0);
 		for (auto&i : _dataStatic.vWalls) {
 			glVertex2fv(&i[0]);
 			glVertex2fv(&i[2]);
@@ -154,6 +175,7 @@ void drawer_gl1::data_dynamic::stream_data(uint64_t newTick, size_t newCount, mm
 	memcpy(carPosX, newPosX, newCount/4 * sizeof(mmr));
 	memcpy(carPosY, newPosY, newCount / 4 * sizeof(mmr));
 	memcpy(carAngle, newAngle, newCount / 4 * sizeof(mmr));
+
 }
 
 
