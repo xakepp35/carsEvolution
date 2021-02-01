@@ -3,6 +3,10 @@
 #include "renderer.h"
 #include "buffer3.h"
 
+#include "sheduler.h"
+#include "physics.h"
+#include "neural.h"
+
 #include <vector>
 
 class drawer_gl1:
@@ -12,13 +16,12 @@ class drawer_gl1:
 public:
 
 	// data that would not change in the logic thread
-	class data_static
+	class local_data
 	{
 	public:
 
-		typedef std::array< float, 4 > wall_segment;
 		// wall is a segment, (x0,y0)-(x1,y1); data is stored contigously in that layout
-		std::vector< wall_segment > vWalls;
+		std::vector< physics::wall_segment > vWalls;
 		float carRadius;
 
 		// add wall segment for static rendering
@@ -26,8 +29,8 @@ public:
 
 	};
 
-	// dynamic_data
-	class data_dynamic
+	// dynamic_data that would change in the logic thread and shared with renderer
+	class shared_data
 	{
 	public:
 
@@ -40,14 +43,15 @@ public:
 		MMR* carPosY;
 		MMR* carAngle;
 
-		data_dynamic();
-		~data_dynamic();
+		shared_data();
+		~shared_data();
 
-		void stream_data(uint64_t newTick, size_t newCount, mmr* newPosX, mmr* newPosY, mmr* newAngle);
+		//void stream_data(const sheduler& tickSheduler, size_t agentCount, const physics& physicsEngine);
+		shared_data& realloc_frame(size_t carCountUpdate);
 
 	protected:
 
-		void alloc(size_t newCount);
+		
 		void release();
 		
 	};
@@ -60,9 +64,9 @@ public:
 	// "Immediate mode" keyboard & window events handling
 	virtual void handle_input(renderer& r) override;
 
-	typedef buffer3< data_dynamic > render_sync;
+	typedef buffer3< shared_data > render_sync;
 
-	data_static _dataStatic;
+	local_data _localData;
 	render_sync _renderSync;
 
 protected:

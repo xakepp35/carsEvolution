@@ -34,6 +34,9 @@ void benchmark_physics(double cpuFreq = 4.2E9) {
 
 
 int main() {
+	for (auto i = 0; i < 33; i++) {
+		std::cout << i << " " << mm_size(i) << "\n";
+	}
 	simulation s(1024, 4, 8, 4);
 	s.main();
 	//benchmark_physics();

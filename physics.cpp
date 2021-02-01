@@ -87,11 +87,6 @@ void physics::describe_situation(size_t numAgents) {
 		substep_find_max_inverse_distance_to_wall(i);
 }
 
-template<typename T>
-T sqr(const T& x) {
-	return x * x;
-}
-
 void physics::update_situation(competition::score_chart& accumulatedScore, size_t numAgents) {
 	// physics actuator: first loads physics constants for SSE
 	mmr amountSteering = _mm_set_ps1(_simConfig.dT2 * _simConfig.steeringMagnitude);

@@ -50,5 +50,6 @@ protected:
 	sheduler	_tickSheduler;
 	drawer_gl1	_frameDrawer;
 	std::thread _physicsThread;
+	bool		_isActive;
 
 };

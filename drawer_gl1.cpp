@@ -19,12 +19,12 @@ drawer_gl1::drawer_gl1():
 
 void drawer_gl1::draw_frame(renderer& r) {
 	// sync with render thread
-	auto& dataDynamic(_renderSync.swap_buffers(render_sync::Reader));
-	if (enableRender && (lastRenderedTick < dataDynamic.nTick)) {
+	auto& sharedData(_renderSync.swap_buffers(render_sync::Reader));
+	if (enableRender && (lastRenderedTick < sharedData.nTick)) {
 		
-		lastRenderedTick = dataDynamic.nTick;
+		lastRenderedTick = sharedData.nTick;
 		std::ostringstream newTitle;
-		newTitle << "t=" << lastRenderedTick << "; best=" << dataDynamic.rcBest;
+		newTitle << "t=" << lastRenderedTick << "; best=" << sharedData.rcBest;
 		r.set_title(newTitle.str().c_str());
 
 		glClearColor(0, 0, 0, 0);
@@ -38,11 +38,11 @@ void drawer_gl1::draw_frame(renderer& r) {
 		glVertex2f(0.0f, 1.0f);
 		
 		glVertex2f(
-			dataDynamic.carPosX[dataDynamic.rcBest / 4].m128_f32[dataDynamic.rcBest % 4],
-			dataDynamic.carPosY[dataDynamic.rcBest / 4].m128_f32[dataDynamic.rcBest % 4]
+			sharedData.carPosX[sharedData.rcBest / 4].m128_f32[sharedData.rcBest % 4],
+			sharedData.carPosY[sharedData.rcBest / 4].m128_f32[sharedData.rcBest % 4]
 		);
 		glColor3f(1.0, 1.0, 0.0);
-		for (auto&i : _dataStatic.vWalls) {
+		for (auto&i : _localData.vWalls) {
 			glVertex2fv(&i[0]);
 			glVertex2fv(&i[2]);
 			//glVertex2f(i[0][0], i[0][1]);
@@ -51,30 +51,30 @@ void drawer_gl1::draw_frame(renderer& r) {
 		glEnd();
 
 		// render cars
-		auto carR = _mm_set_ps1(_dataStatic.carRadius); // sqrt(car._mPhysics.rSqr);
+		auto carR = _mm_set_ps1(_localData.carRadius); // sqrt(car._mPhysics.rSqr);
 		auto mm2PIdiv3 = _mm_set_ps1(2.0943951023931954923084289221863f); // 2*pi / 3
 		glBegin(GL_TRIANGLES);
 		
 
-		for (size_t i = 0; i < dataDynamic.carCount / 4; ++i) {
+		for (size_t i = 0; i < sharedData.carCount / 4; ++i) {
 			//auto& car = *static_cast<simulation::car*>(i.get());
 
 			MMR unitX, unitY;
 
 			//auto pos0 = car._mPhysics.p + unit(car._mPhysics.ang) * carR;
-			FTA::sincos_ps(dataDynamic.carAngle[i], &unitY, &unitX);
-			auto pos0X = _mm_add_ps(dataDynamic.carPosX[i], _mm_mul_ps(unitX, carR));
-			auto pos0Y = _mm_add_ps(dataDynamic.carPosY[i], _mm_mul_ps(unitY, carR));
+			FTA::sincos_ps(sharedData.carAngle[i], &unitY, &unitX);
+			auto pos0X = _mm_add_ps(sharedData.carPosX[i], _mm_mul_ps(unitX, carR));
+			auto pos0Y = _mm_add_ps(sharedData.carPosY[i], _mm_mul_ps(unitY, carR));
 
 			//auto pos2 = car._mPhysics.p + unit(car._mPhysics.ang - pi * 2 / 3) * carR;
-			FTA::sincos_ps(_mm_sub_ps(dataDynamic.carAngle[i], mm2PIdiv3), &unitY, &unitX);
-			auto pos2X = _mm_add_ps(dataDynamic.carPosX[i], _mm_mul_ps(unitX, carR));
-			auto pos2Y = _mm_add_ps(dataDynamic.carPosY[i], _mm_mul_ps(unitY, carR));
+			FTA::sincos_ps(_mm_sub_ps(sharedData.carAngle[i], mm2PIdiv3), &unitY, &unitX);
+			auto pos2X = _mm_add_ps(sharedData.carPosX[i], _mm_mul_ps(unitX, carR));
+			auto pos2Y = _mm_add_ps(sharedData.carPosY[i], _mm_mul_ps(unitY, carR));
 
 			//auto pos1 = car._mPhysics.p + unit(car._mPhysics.ang + pi * 2 / 3) * carR;
-			FTA::sincos_ps(_mm_add_ps(dataDynamic.carAngle[i], mm2PIdiv3), &unitY, &unitX);
-			auto pos1X = _mm_add_ps(dataDynamic.carPosX[i], _mm_mul_ps(unitX, carR));
-			auto pos1Y = _mm_add_ps(dataDynamic.carPosY[i], _mm_mul_ps(unitY, carR));
+			FTA::sincos_ps(_mm_add_ps(sharedData.carAngle[i], mm2PIdiv3), &unitY, &unitX);
+			auto pos1X = _mm_add_ps(sharedData.carPosX[i], _mm_mul_ps(unitX, carR));
+			auto pos1Y = _mm_add_ps(sharedData.carPosY[i], _mm_mul_ps(unitY, carR));
 
 			// shuffle/interleave for graphics
 			for (size_t j = 0; j < 4; ++j) {
@@ -150,12 +150,12 @@ void drawer_gl1::handle_input(renderer& r) {
 }
 
 
-void drawer_gl1::data_static::register_wall(float x0, float y0, float x1, float y1) {
-	vWalls.emplace_back(wall_segment({ x0, y0,x1,y1 }));
+void drawer_gl1::local_data::register_wall(float x0, float y0, float x1, float y1) {
+	vWalls.emplace_back(physics::wall_segment({ x0, y0, x1, y1 }));
 }
 
 
-drawer_gl1::data_dynamic::data_dynamic():
+drawer_gl1::shared_data::shared_data():
 	nTick(0),
 	carCount(0),
 	carPosX(nullptr),
@@ -164,34 +164,25 @@ drawer_gl1::data_dynamic::data_dynamic():
 {}
 
 
-drawer_gl1::data_dynamic::~data_dynamic() {
+drawer_gl1::shared_data::~shared_data() {
 	release(); 
 }
 
 
-void drawer_gl1::data_dynamic::stream_data(uint64_t newTick, size_t newCount, mmr* newPosX, mmr* newPosY, mmr* newAngle) {
-	nTick = newTick;
-	alloc(newCount);
-	memcpy(carPosX, newPosX, newCount/4 * sizeof(mmr));
-	memcpy(carPosY, newPosY, newCount / 4 * sizeof(mmr));
-	memcpy(carAngle, newAngle, newCount / 4 * sizeof(mmr));
-
-}
-
-
-void drawer_gl1::data_dynamic::alloc(size_t newCount) {
-	if (newCount != carCount) {
+drawer_gl1::shared_data& drawer_gl1::shared_data::realloc_frame(size_t carCountUpdate) {
+	if (carCount != carCountUpdate) {
 		release();
-		carCount = newCount;
-		auto mmCount = mm_count(newCount);
+		carCount = carCountUpdate;
+		auto mmCount = mm_count(carCount);
 		carPosX = aalloc(mmCount);
 		carPosY = aalloc(mmCount);
 		carAngle = aalloc(mmCount);
 	}
+	return *this;
 }
 
 
-void drawer_gl1::data_dynamic::release() {
+void drawer_gl1::shared_data::release() {
 	_mm_free( carPosX);
 	_mm_free(carPosY);
 	_mm_free(carAngle);

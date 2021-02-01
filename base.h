@@ -30,6 +30,21 @@ template< typename T=mmr > T* aalloc(size_t elementCount, size_t addrAligment = 
 	return reinterpret_cast<T*>(memset(_mm_malloc(rawByteSize, addrAligment), 0, rawByteSize));
 }
 
-template<typename T=mmr > size_t mm_count(size_t nItems) {
-	return nItems * sizeof(float) / sizeof(T);
+// count of mmr to allocate nItems of floats
+template<typename T=mmr > size_t mm_count(size_t nFloatItems) {
+	return nFloatItems * sizeof(float) / sizeof(T);
+}
+
+// size of memory in bytes, to copy, nItems is float count
+template<typename T = mmr > size_t mm_size(size_t nFloatItems) {
+	//return nFloatItems / 4 * sizeof(mmr);
+	return (
+		(nFloatItems * sizeof(float) + sizeof(mmr)-1)
+		/ sizeof(mmr)
+	) * sizeof(mmr);
+}
+
+template< typename T>
+T sqr(T x) {
+	return x * x;
 }

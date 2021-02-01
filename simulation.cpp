@@ -13,18 +13,14 @@
 #include <numeric>	// std::iota
 #include <algorithm> // std::sort
 
-template< typename T>
-T sqr(T x) {
-	return x * x;
-}
-
 
 simulation::simulation(size_t nAgents, size_t nNeurons, size_t nWalls, size_t nSensors):
 	competition(nAgents),
 	_neuralEngine(nAgents, nNeurons, nSensors),
 	_physicsEngine(nAgents, nWalls, nSensors),
 	_tickSheduler(),
-	_frameDrawer()
+	_frameDrawer(),
+	_isActive(true)
 {
 	auto& simConfig(_physicsEngine._simConfig);
 	simConfig.dT = 1.0f / 1024; // fixed time delta for physics simulation
@@ -40,7 +36,7 @@ simulation::simulation(size_t nAgents, size_t nNeurons, size_t nWalls, size_t nS
 	spawnConfig.agentRespawnPosX = 0.0f;
 	spawnConfig.agentRespawnPosY = 0.8f;
 
-	auto& dataStatic(_frameDrawer._dataStatic);
+	auto& dataStatic(_frameDrawer._localData);
 	dataStatic.carRadius = _physicsEngine._simConfig.agentRadius;
 
 	//void engine::generate_rectangle_track() {
@@ -55,7 +51,7 @@ simulation::simulation(size_t nAgents, size_t nNeurons, size_t nWalls, size_t nS
 	dataStatic.register_wall(-0.85f, 0.7f, 0.7f, 0.7f);
 	// track is hold by physics engine in sse xmm register-compatible format
 	// wall data must be duplicated x4, to do ops "with same wall, for 4 different agents" in single sse instruction)
-	_physicsEngine.populate_walls(_frameDrawer._dataStatic.vWalls);
+	_physicsEngine.populate_walls(_frameDrawer._localData.vWalls);
 }
 
 
@@ -96,29 +92,31 @@ void simulation::step() {
 	// sheduler: analyze performance, artificial delay to slow down simulation
 	_tickSheduler.step();
 
-	auto& dataDynamic(_frameDrawer._renderSync.swap_buffers(drawer_gl1::render_sync::Writer));
-	//for (auto i = 0; i < 5; i++)
-		//((float*)_physicsEngine._agentPosX)[i] += 1.0f / 10240;
-	dataDynamic.rcBest = this->rankingChart[0];//_physicsEngine._agentPathAdvancement
-	dataDynamic.stream_data(_tickSheduler._nStep, participant_count(), _physicsEngine._agentPosX, _physicsEngine._agentPosY, _physicsEngine._agentAngle);
+	
+	auto& sharedData(_frameDrawer._renderSync.swap_buffers(drawer_gl1::render_sync::Writer));
+	//sharedData.stream_data(_tickSheduler._nStep, sharedData., _physicsEngine);
+	sharedData.nTick = _tickSheduler._nStep;
+	sharedData.rcBest = this->rankingChart[0];//_physicsEngine._agentPathAdvancement
+	sharedData.realloc_frame(participant_count());
+	memcpy(sharedData.carPosX, _physicsEngine._agentPosX, mm_size(sharedData.carCount));
+	memcpy(sharedData.carPosY, _physicsEngine._agentPosY, mm_size(sharedData.carCount));
+	memcpy(sharedData.carAngle, _physicsEngine._agentAngle, mm_size(sharedData.carCount));
 }
 
 void simulation::physics_loop() {
-	while (true)
+	while (_isActive)
 		step();
 }
 
 #include "renderer.h"
 
 void simulation::main() {
-
-	
-	//}
-
-	renderer frameRenderer(800, 800);
+	renderer frameRenderer(1600, 1000);
 	frameRenderer.set_vsync_interval(1);
+
 	_physicsThread = std::thread(&simulation::physics_loop, this);
 	frameRenderer.main_loop(_frameDrawer, _frameDrawer);
-	_physicsThread.join(); // stuck for infinity
+	_isActive = false;
+	_physicsThread.join(); // physics thread is a loop:  while(_isActive) { step(); }
 
 }
